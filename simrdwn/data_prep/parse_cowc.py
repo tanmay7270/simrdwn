@@ -177,7 +177,7 @@ def get_gdf_tot_cowc(truth_dir, image_dir='',
         if len(image_dir) > 0:
             image_path = os.path.join(image_dir, basename)
         else:
-            image_path = os.path.jin(truth_dir, basename)
+            image_path = os.path.join(truth_dir, basename)
         print(i, "label_image_path:", label_image_path)
         print(i, "image_path:", image_path)
 
