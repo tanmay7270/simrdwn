@@ -68,17 +68,10 @@ def slice_im(image_path, out_name, out_dir, sliceHeight=256, sliceWidth=256,
     print("image.shape:", image0.shape)
     # image0 = cv2.imread(image_path, 1)  # color
 
-    if len(out_ext) == 0:
-        ext = '.' + image_path.split('.')[-1]
-    else:
-        ext = out_ext
-
+    ext = '.' + image_path.split('.')[-1] if len(out_ext) == 0 else out_ext
     win_h, win_w = image0.shape[:2]
 
-    # if slice sizes are large than image, pad the edges
-    pad = 0
-    if sliceHeight > win_h:
-        pad = sliceHeight - win_h
+    pad = sliceHeight - win_h if sliceHeight > win_h else 0
     if sliceWidth > win_w:
         pad = max(pad, sliceWidth - win_w)
     # pad the edge of the image with black pixels
@@ -105,15 +98,8 @@ def slice_im(image_path, out_name, out_dir, sliceHeight=256, sliceWidth=256,
                 print(n_ims)
 
             # make sure we don't have a tiny image on the edge
-            if y0+sliceHeight > image0.shape[0]:
-                y = image0.shape[0] - sliceHeight
-            else:
-                y = y0
-            if x0+sliceWidth > image0.shape[1]:
-                x = image0.shape[1] - sliceWidth
-            else:
-                x = x0
-
+            y = image0.shape[0] - sliceHeight if y0+sliceHeight > image0.shape[0] else y0
+            x = image0.shape[1] - sliceWidth if x0+sliceWidth > image0.shape[1] else x0
             # extract image
             window_c = image0[y:y + sliceHeight, x:x + sliceWidth]
             # get black and white image

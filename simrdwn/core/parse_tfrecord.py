@@ -117,7 +117,9 @@ def tf_to_df(tfrecords_filename, label_map_dict={},
         if len(label_map_dict.keys()) > 0:
             classes_str = [label_map_dict[ztmp] for ztmp in classes_int]
             classes_legend_str = [
-                str(ztmp) + ' = ' + label_map_dict[ztmp] for ztmp in classes_int]
+                f'{str(ztmp)} = ' + label_map_dict[ztmp]
+                for ztmp in classes_int
+            ]
 
         img_loc_string = (str(example.features.feature['image/filename']
                               .bytes_list.value[0]))

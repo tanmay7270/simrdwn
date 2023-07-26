@@ -57,12 +57,10 @@ def plot_rects_eval(im_test_c, boxes_rect_rot_coords, figsize=(10, 10),
     for i, coords_rot0 in enumerate(boxes_rect_rot_coords):
         if type(coords_rot0) == np.ndarray:
             coords_rot = coords_rot0
-            coords1 = coords_rot.reshape((-1, 1, 2))
-
         else:
             coords_rot = np.array(
                 list(coords_rot0.exterior.coords), np.int32)[:-1]
-            coords1 = coords_rot.reshape((-1, 1, 2))
+        coords1 = coords_rot.reshape((-1, 1, 2))
 
         if verbose:
             print("coords_rot0:", coords_rot0)

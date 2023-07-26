@@ -116,7 +116,7 @@ def main(_):
     #                  'inference_graph']
     for flag_name in required_flags:
         if not getattr(FLAGS, flag_name):
-            raise ValueError('Flag --{} is required'.format(flag_name))
+            raise ValueError(f'Flag --{flag_name} is required')
 
     t0 = time.time()
     # config = tf.ConfigProto(device_count = {'GPU': FLAGS.GPU})
@@ -140,8 +140,9 @@ def main(_):
              detected_labels_tensor) = detection_inference.build_inference_graph(
                  image_tensor, FLAGS.inference_graph)
 
-            tf.logging.info('Running inference and writing output to {}'.format(
-                FLAGS.output_tfrecord_path))
+            tf.logging.info(
+                f'Running inference and writing output to {FLAGS.output_tfrecord_path}'
+            )
             sess.run(tf.local_variables_initializer())
             tf.train.start_queue_runners()
 

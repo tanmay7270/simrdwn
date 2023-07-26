@@ -79,19 +79,6 @@ def get_global_coords(row,
                 (float(ymax0) > (sliceHeight - edge_buffer_test))):
             # print ("Too close to edge, skipping", row, "...")
             return [], []
-        # skip if near edge and high aspect ratio (set edge_buffer_test < 0 to skip)
-        elif ((float(xmin0) < edge_buffer_test) or
-                (float(xmax0) > (sliceWidth - edge_buffer_test)) or
-                (float(ymin0) < edge_buffer_test) or
-                (float(ymax0) > (sliceHeight - edge_buffer_test))):
-            # compute aspect ratio
-            dx = xmax0 - xmin0
-            dy = ymax0 - ymin0
-            if (1.*dx/dy > max_edge_aspect_ratio) \
-                    or (1.*dy/dx > max_edge_aspect_ratio):
-                # print ("Too close to edge, and high aspect ratio, skipping", row, "...")
-                return [], []
-
     # set min, max x and y for each box, shifted for appropriate
     #   padding
     xmin = max(0, int(round(float(xmin0)))+left - pad)
@@ -269,10 +256,10 @@ def augment_df(df,
 
     if verbose:
         print("  Add in global location of each row")
+    bad_idxs = []
     # if slicing, get global location from filename
     if slice_sizes[0] > 0:
         x0l, x1l, y0l, y1l = [], [], [], []
-        bad_idxs = []
         for index, row in df.iterrows():
             bounds, coords = get_global_coords(
                 row,
@@ -293,16 +280,13 @@ def augment_df(df,
         df['Xmax_Glob'] = x1l
         df['Ymin_Glob'] = y0l
         df['Ymax_Glob'] = y1l
-    # if not slicing, global coords are equivalent to local coords
     else:
         df['Xmin_Glob'] = df['Xmin'].values
         df['Xmax_Glob'] = df['Xmax'].values
         df['Ymin_Glob'] = df['Ymin'].values
         df['Ymax_Glob'] = df['Ymax'].values
-        bad_idxs = []
-
     # remove bad_idxs
-    if len(bad_idxs) > 0:
+    if bad_idxs:
         print("removing bad idxs near junctions:", bad_idxs)
         df = df.drop(df.index[bad_idxs])
 
@@ -369,7 +353,7 @@ def post_process_yolt_test_create_df(yolt_test_classes_files, log_file,
 
     for i, vfile in enumerate(yolt_test_classes_files):
 
-        test_base_string = '"test_file: ' + str(vfile) + '\n"'
+        test_base_string = f'"test_file: {str(vfile)}' + '\n"'
         print(test_base_string[1:-2])
         os.system('echo ' + test_base_string + ' >> ' + log_file)
 
@@ -392,11 +376,7 @@ def post_process_yolt_test_create_df(yolt_test_classes_files, log_file,
                         rotate_boxes=rotate_boxes)
 
         # append to total df
-        if i == 0:
-            df_tot = df
-        else:
-            df_tot = df_tot.append(df, ignore_index=True)
-
+        df_tot = df if i == 0 else df_tot.append(df, ignore_index=True)
     return df_tot
 
 
@@ -536,10 +516,7 @@ def refine_df(df, groupby='Image_Path',
                     #   the bounding box of a plane, for example
                     boxes_nms_input = np.stack(
                         (xmins, ymins, xmaxs, ymaxs), axis=1)
-                    if use_weighted_nms:
-                        probs = scores
-                    else:
-                        probs = []
+                    probs = scores if use_weighted_nms else []
                     # _, _, good_idxs = non_max_suppression(
                     good_idxs = non_max_suppression(
                         boxes_nms_input, probs=probs,
@@ -553,12 +530,11 @@ def refine_df(df, groupby='Image_Path',
                     boxes = boxes[good_idxs]
                     scores = scores[good_idxs]
                     df_idxs = df_idxs[good_idxs]
-                    #classes = classes_str[good_idxs]
+                                    #classes = classes_str[good_idxs]
 
                 df_idxs_tot.extend(df_idxs)
                 count += len(df_idxs)
 
-        # no secondary filter
         else:
             data = data_all_classes.copy()
             # filter out cats__to_ignore
@@ -601,10 +577,7 @@ def refine_df(df, groupby='Image_Path',
                 #   a car inside the bounding box of a plane, for example
                 boxes_nms_input = np.stack(
                     (xmins, ymins, xmaxs, ymaxs), axis=1)
-                if use_weighted_nms:
-                    probs = scores
-                else:
-                    probs = []
+                probs = scores if use_weighted_nms else []
                 # _, _, good_idxs = non_max_suppression(
                 good_idxs = non_max_suppression(
                     boxes_nms_input, probs=probs,
@@ -616,7 +589,7 @@ def refine_df(df, groupby='Image_Path',
                 boxes = boxes[good_idxs]
                 scores = scores[good_idxs]
                 df_idxs = df_idxs[good_idxs]
-                # classes = classes_str[good_idxs]
+                            # classes = classes_str[good_idxs]
 
             df_idxs_tot.extend(df_idxs)
             count += len(df_idxs)
@@ -703,10 +676,7 @@ def plot_refined_df(df, groupby='Image_Path', label_map_dict={},
     building_list = [["ImageId", "BuildingId", "PolygonWKT_Pix", "Confidence"]]
 
     # group by image, and plot
-    if shuffle_ims:
-        group = df.groupby(groupby, sort=False)
-    else:
-        group = df.groupby(groupby)
+    group = df.groupby(groupby, sort=False) if shuffle_ims else df.groupby(groupby)
     # print_iter = 1
     for i, g in enumerate(group):
 
@@ -856,12 +826,7 @@ def non_max_suppression(boxes, probs=[], overlapThresh=0.5):
     area = (x2 - x1 + 1) * (y2 - y1 + 1)
 
     # sort the boxes by the bottom-right y-coordinate of the bounding box
-    if len(probs) == 0:
-        idxs = np.argsort(y2)
-    # sort boxes by the highest prob (descending order)
-    else:
-        idxs = np.argsort(probs)[::-1]
-
+    idxs = np.argsort(y2) if len(probs) == 0 else np.argsort(probs)[::-1]
     # keep looping while some indexes still remain in the indexes
     # list
     while len(idxs) > 0:
@@ -935,10 +900,7 @@ def make_color_legend(outfile, label_map_dict, auto_assign_colors=True,
             print("cmap:", cmap)
             print("cmap.N:", cmap.N)
         # sometimes label_map_dict starts at 1, instead of 0
-        if min(list(label_map_dict.keys())) == 1:
-            idx_plus_val = 1
-        else:
-            idx_plus_val = 0
+        idx_plus_val = 1 if min(list(label_map_dict.keys())) == 1 else 0
         colormap = []
         color_dict = {}
 
@@ -952,18 +914,18 @@ def make_color_legend(outfile, label_map_dict, auto_assign_colors=True,
                 rgb = cmap(i)[:3]
                 # hexa = matplotlib.colors.rgb2hex(rgb)
                 # cmaplist.append(hexa)
-                rgb_tuple = tuple([int(255*z) for z in rgb])
+                rgb_tuple = tuple(int(255*z) for z in rgb)
                 colormap.append(rgb_tuple)
                 color_dict[label_map_dict[i + idx_plus_val]] = rgb_tuple
 
-        # for key in label_map_dict.keys():
-        #    itmp = key
-        #    color = colormap[itmp]
-        #    color_dict[label_map_dict[key]] = color
+            # for key in label_map_dict.keys():
+            #    itmp = key
+            #    color = colormap[itmp]
+            #    color_dict[label_map_dict[key]] = color
 
-        # # OPTIONAL, assign defaulr color as cyan
-        # if list(label_map_dict.values()) == ['car']:
-        #     color_dict = { 'car':  (255, 255, 0)}
+            # # OPTIONAL, assign defaulr color as cyan
+            # if list(label_map_dict.values()) == ['car']:
+            #     color_dict = { 'car':  (255, 255, 0)}
 
     else:
         # assign colors
@@ -1007,14 +969,27 @@ def make_color_legend(outfile, label_map_dict, auto_assign_colors=True,
     img_mpl = 255*np.ones((hprime, w, 3))
 
     try:
-        cv2.putText(img_mpl, 'Color Legend', (int(xpos), int(ydiff)), font,
-                    1.5*font_size, (0, 0, 0), int(1.5*label_font_width),
-                    # cv2.CV_AA)
-                    cv2.LINE_AA)
+        cv2.putText(
+            img_mpl,
+            'Color Legend',
+            (xpos, ydiff),
+            font,
+            1.5 * font_size,
+            (0, 0, 0),
+            int(1.5 * label_font_width),
+            cv2.LINE_AA,
+        )
     except:
-        cv2.putText(img_mpl, 'Color Legend', (int(xpos), int(ydiff)), font,
-                    1.5*font_size, (0, 0, 0), int(1.5*label_font_width),
-                    cv2.LINE_AA)
+        cv2.putText(
+            img_mpl,
+            'Color Legend',
+            (xpos, ydiff),
+            font,
+            1.5 * font_size,
+            (0, 0, 0),
+            int(1.5 * label_font_width),
+            cv2.LINE_AA,
+        )
 
     for key in label_map_dict.keys():
         itmp = key
@@ -1024,17 +999,31 @@ def make_color_legend(outfile, label_map_dict, auto_assign_colors=True,
         #color = colormap[itmp]
         #color_dict[label_map_dict[key]] = color
 
-        text = '- ' + str(key) + ': ' + str(label_map_dict[key])
+        text = f'- {str(key)}: {str(label_map_dict[key])}'
         ypos = 2 * ydiff + itmp * ydiff
         try:
-            cv2.putText(img_mpl, text, (int(xpos), int(ypos)), font,
-                        1.5*font_size, color, label_font_width,
-                        cv2.CV_AA)
-            # cv2.LINE_AA)
+            cv2.putText(
+                img_mpl,
+                text,
+                (xpos, int(ypos)),
+                font,
+                1.5 * font_size,
+                color,
+                label_font_width,
+                cv2.CV_AA,
+            )
+                    # cv2.LINE_AA)
         except:
-            cv2.putText(img_mpl, text, (int(xpos), int(ypos)), font,
-                        1.5*font_size, color, label_font_width,
-                        cv2.LINE_AA)
+            cv2.putText(
+                img_mpl,
+                text,
+                (xpos, int(ypos)),
+                font,
+                1.5 * font_size,
+                color,
+                label_font_width,
+                cv2.LINE_AA,
+            )
 
     cv2.imwrite(outfile, img_mpl)
 

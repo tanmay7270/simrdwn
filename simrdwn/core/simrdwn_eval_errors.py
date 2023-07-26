@@ -23,11 +23,11 @@ def compute_f1(tp, fn, fp):
         recall = 1.*tp / (tp + fn)
     except:
         return 0
-    if (precision + recall) > 0:
-        f1 = 2. * precision * recall / (precision + recall)
-    else:
-        f1 = 0
-    return f1
+    return (
+        2.0 * precision * recall / (precision + recall)
+        if (precision + recall) > 0
+        else 0
+    )
 
 
 ###############################################################################
@@ -188,8 +188,7 @@ def construct_df_scores_from_precision_recall_df(df_precision_recall_tot,
 
     score_list = []
     # iterate through categories
-    for i, category in enumerate(categories):
-
+    for category in categories:
         df_filt_cat = df_precision_recall_tot[df_precision_recall_tot['Category'] == category]
 
         # iterate through detect threshes to create scores
@@ -291,7 +290,7 @@ def bootstrap_mAP(df_precision_recall, n_bootstraps=5000,
         # df_filt = df.loc[df[name_col].isin(im_names_boot)]
         # instead, iteratively create dataframe
         df_filt_data = []
-        for j, im_name_tmp in enumerate(im_names_boot):
+        for im_name_tmp in im_names_boot:
             # if j > 4:   break
             df_filt_data.extend(df.loc[df[name_col] == im_name_tmp].values)
         df_filt = pd.DataFrame(df_filt_data, columns=df.columns.values)
@@ -311,8 +310,8 @@ def bootstrap_mAP(df_precision_recall, n_bootstraps=5000,
             map_dic[cat].append(mAP_boot)
             f1_dic[cat].append(f1_boot)
             print("  cat:", cat, "boot mAP:", mAP_boot, "boot F1:", f1_boot)
-        # map_list.append(mAP_boot)
-        # f1_list.append(f1_boot)
+            # map_list.append(mAP_boot)
+            # f1_list.append(f1_boot)
 
     # get stds of arrays
     out_data = []

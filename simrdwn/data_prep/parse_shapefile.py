@@ -26,7 +26,7 @@ def geomGeo2geomPixel(geom, affineObject=[], input_raster='', gdal_geomTransform
     # This function transforms a shapely geometry in geospatial coordinates into pixel coordinates
     # geom must be shapely geometry
     # affineObject = rasterio.open(input_raster).affine
-    
+
     gdal_geomTransform = gdal.Open(input_raster).GetGeoTransform()
     # input_raster is path to raster to gather georectifcation information
     if not affineObject:
@@ -37,16 +37,17 @@ def geomGeo2geomPixel(geom, affineObject=[], input_raster='', gdal_geomTransform
 
     affineObjectInv = ~affineObject
 
-    geomTransform = shapely.affinity.affine_transform(geom,
-                                      [affineObjectInv.a,
-                                       affineObjectInv.b,
-                                       affineObjectInv.d,
-                                       affineObjectInv.e,
-                                       affineObjectInv.xoff,
-                                       affineObjectInv.yoff]
-                                      )
-
-    return geomTransform
+    return shapely.affinity.affine_transform(
+        geom,
+        [
+            affineObjectInv.a,
+            affineObjectInv.b,
+            affineObjectInv.d,
+            affineObjectInv.e,
+            affineObjectInv.xoff,
+            affineObjectInv.yoff,
+        ],
+    )
 
 
 ###############################################################################
@@ -107,7 +108,7 @@ def latlon2pixel(lat, lon, input_raster='', targetsr='', geom_transform=''):
 
 ###############################################################################
 def transform_crs(input_raster):
-    
+
     '''If crs of input_raster is not epsg:4326, transform it to be so.
     Copy original file to: os.path.join(dirname + '/orig', basename)
     '''
@@ -116,21 +117,18 @@ def transform_crs(input_raster):
     basename = os.path.basename(input_raster)
 
     #input_raster = os.path.join(truth_dir, input_raster_part)
-    
+
     orig_dir = os.path.join(truth_dir, 'orig')
     if not os.path.exists(orig_dir): 
         os.mkdir(orig_dir)
 
     if input_raster.endswith('_new.tif'):
         return
-    
+
     crs = rasterio.open(input_raster).crs 
-    
+
     # check if the crs is not epsg:4326
-    if crs.data['init'] == u'epsg:4326':
-        return
-    
-    else:        
+    if crs.data['init'] != u'epsg:4326':
         # copy file to orig folder, if it doesn't already exist
         orig_dest = os.path.join(orig_dir, basename)
         if not os.path.exists(orig_dest):
@@ -138,16 +136,16 @@ def transform_crs(input_raster):
             print ("  crs:", crs)
             print ("  copy", input_raster, "to", orig_dest)
             shutil.copy(input_raster, orig_dest)
-            
+
         # transform                
         output_raster = input_raster.split('.')[0] + '_new.tif'
-        cmd = 'gdalwarp -t_srs "EPSG:4326" ' +  orig_dest + ' ' + output_raster
+        cmd = f'gdalwarp -t_srs "EPSG:4326" {orig_dest} {output_raster}'
         os.system(cmd)
-        
+
         # move files around
         os.remove(input_raster)
         shutil.copy(output_raster, input_raster)
-        return
+    return
 
 
         
@@ -310,20 +308,20 @@ def get_window_geoms(df, window_size=416, jitter_frac=0.2, verbose=False):
         geom_pix = row['geometry_poly_pixel']
         #pix_coords = list(geom_pix.coords)
         bounds = geom_pix.bounds
-        area = geom_pix.area
         (minx, miny, maxx, maxy) = bounds
         dx, dy = maxx-minx, maxy-miny
         if verbose:
             print ("bounds:", bounds )
             print ("dx, dy:", dx, dy )
+            area = geom_pix.area
             print ("area:", area )
-        
+
         # get centroid
         centroid = geom_pix.centroid
         #print "centroid:", centroid
         cx_tmp, cy_tmp = list(centroid.coords)[0]
         cx, cy = np.rint(cx_tmp), np.rint(cy_tmp)
-        
+
         # get window coords, jitter, and shapely geometry for window
         jx, jy = win_jitter(window_size, jitter_frac=jitter_frac)
         x0 = cx - window_size/2 + jx
@@ -345,7 +343,7 @@ def get_window_geoms(df, window_size=416, jitter_frac=0.2, verbose=False):
 
 ###############################################################################
 def get_objs_in_window(df_, geom_window, min_obj_frac=0.7, 
-                       use_box_geom=True, verbose=False):    
+                       use_box_geom=True, verbose=False):
     '''Find all objects in the window'''
     
     (minx_win, miny_win, maxx_win, maxy_win) = geom_window.bounds
@@ -354,16 +352,15 @@ def get_objs_in_window(df_, geom_window, min_obj_frac=0.7,
 
     obj_list = []
     for index_nest, row_nest in df_.iterrows():
-        cat_nest = row_nest['Category']
         geom_pix_nest_tmp = row_nest['geometry_poly_pixel']
-        
+
         # if use_box_geom, turn the shapefile object geom into a bounding box
         if use_box_geom:
             (x0, y0, x1, y1) = geom_pix_nest_tmp.bounds
             geom_pix_nest = shapely.geometry.box(x0, y0, x1, y1, ccw=True)
         else:
             geom_pix_nest = geom_pix_nest_tmp
-        
+
         #pix_coords = list(geom_pix.coords)
         #bounds_nest = geom_pix_nest.bounds
         area_nest = geom_pix_nest.area
@@ -375,34 +372,33 @@ def get_objs_in_window(df_, geom_window, min_obj_frac=0.7,
             geom_pix_nest = geom_pix_nest.buffer(0)
             intersect_geom = geom_pix_nest.intersection(geom_window)
             print ("Had to update geom_pix_nest:", geom_pix_nest.bounds  )
-            
-        intersect_bounds = intersect_geom.bounds
+
         intersect_area = intersect_geom.area
         intersect_frac = intersect_area / area_nest
-        
-        
-        # skip if object not in window, else add to window
+
+
         if intersect_frac < min_obj_frac:
             continue
-        else:
-            # get window coords
-            (minx_nest, miny_nest, maxx_nest, maxy_nest) = intersect_bounds
-            dx_nest, dy_nest = maxx_nest - minx_nest, maxy_nest - miny_nest
-            x0_obj, y0_obj = minx_nest - minx_win, miny_nest - miny_win
-            x1_obj, y1_obj = x0_obj + dx_nest, y0_obj + dy_nest
-        
-            x0_obj, y0_obj, x1_obj, y1_obj = np.rint(x0_obj), np.rint(y0_obj),\
-                                             np.rint(x1_obj), np.rint(y1_obj)
-            obj_list.append([index_nest, cat_nest, x0_obj, y0_obj, x1_obj, 
-                             y1_obj])                                
-            if verbose:
-                print (" ", index_nest, "geom_obj.bounds:", geom_pix_nest.bounds )
-                print ("  intesect area:", intersect_area )
-                print ("  obj area:", area_nest )
-                print ("  intersect_frac:", intersect_frac )
-                print ("  intersect_bounds:", intersect_bounds )
-                print ("  category:", cat_nest )
-                
+        intersect_bounds = intersect_geom.bounds
+        # get window coords
+        (minx_nest, miny_nest, maxx_nest, maxy_nest) = intersect_bounds
+        dx_nest, dy_nest = maxx_nest - minx_nest, maxy_nest - miny_nest
+        x0_obj, y0_obj = minx_nest - minx_win, miny_nest - miny_win
+        x1_obj, y1_obj = x0_obj + dx_nest, y0_obj + dy_nest
+
+        x0_obj, y0_obj, x1_obj, y1_obj = np.rint(x0_obj), np.rint(y0_obj),\
+                                         np.rint(x1_obj), np.rint(y1_obj)
+        cat_nest = row_nest['Category']
+        obj_list.append([index_nest, cat_nest, x0_obj, y0_obj, x1_obj, 
+                         y1_obj])
+        if verbose:
+            print (" ", index_nest, "geom_obj.bounds:", geom_pix_nest.bounds )
+            print ("  intesect area:", intersect_area )
+            print ("  obj area:", area_nest )
+            print ("  intersect_frac:", intersect_frac )
+            print ("  intersect_bounds:", intersect_bounds )
+            print ("  category:", cat_nest )
+
     return obj_list
     
 
@@ -412,8 +408,7 @@ def get_image_window(im, window_geom):
     
     bounds_int = [int(itmp) for itmp in window_geom.bounds]
     (minx_win, miny_win, maxx_win, maxy_win) = bounds_int
-    window = im[miny_win:maxy_win, minx_win:maxx_win]
-    return window
+    return im[miny_win:maxy_win, minx_win:maxx_win]
 
 
 ###############################################################################

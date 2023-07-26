@@ -45,7 +45,7 @@ def gt_boxes_from_cowc_png(gt_c, yolt_box_size, verbose=False):
     # print ("label_locs:", label_locs)
 
     # skip if label_locs is empty
-    if len(label_locs) == 0:
+    if not label_locs:
         if verbose:
             print("Label empty")
         return [], []
@@ -149,10 +149,9 @@ def cowc_to_gdf(label_image_path, image_path,
     else:
         box_coords = box_coords_init
 
-    df = cowc_box_coords_to_gdf(box_coords, image_path, category,
-                                verbose=verbose)
-
-    return df
+    return cowc_box_coords_to_gdf(
+        box_coords, image_path, category, verbose=verbose
+    )
 
 
 ###############################################################################
@@ -195,10 +194,7 @@ def get_gdf_tot_cowc(truth_dir, image_dir='',
             if verbose:
                 print("y pixel coords < 0:", np.min(gdf['ymin'].values))
 
-        if i == 0:
-            gdf_tot = gdf
-        else:
-            gdf_tot = gdf_tot.append(gdf)
+        gdf_tot = gdf if i == 0 else gdf_tot.append(gdf)
     gdf_tot.index = np.arange(len(gdf_tot))
 
     if len(outfile_df) > 0:
@@ -222,22 +218,16 @@ def gt_dic_from_box_coords(box_coords):
     '''
 
     box_coords = np.array(box_coords)
-    out_dic = {}
-
-    out_dic['pt1X'] = box_coords[:, 0]
-    out_dic['pt1Y'] = box_coords[:, 2]
-
-    # set p2 as diagonal from p1
-    out_dic['pt2X'] = box_coords[:, 1]  # box_coords[:,1]
-    out_dic['pt2Y'] = box_coords[:, 3]  # box_coords[:,2]
-
-    out_dic['pt3X'] = box_coords[:, 1]  # box_coords[:,1]
-    out_dic['pt3Y'] = box_coords[:, 2]  # box_coords[:,3]
-
-    out_dic['pt4X'] = box_coords[:, 0]
-    out_dic['pt4Y'] = box_coords[:, 3]
-
-    return out_dic
+    return {
+        'pt1X': box_coords[:, 0],
+        'pt1Y': box_coords[:, 2],
+        'pt2X': box_coords[:, 1],
+        'pt2Y': box_coords[:, 3],
+        'pt3X': box_coords[:, 1],
+        'pt3Y': box_coords[:, 2],
+        'pt4X': box_coords[:, 0],
+        'pt4Y': box_coords[:, 3],
+    }
 
 
 ###############################################################################
@@ -281,15 +271,8 @@ def slice_im_cowc(input_im, input_mask, outname_root, outdir_im, outdir_label,
             n_ims += 1
             # extract image
             # make sure we don't go past the edge of the image
-            if y + sliceHeight > im_h:
-                y0 = im_h - sliceHeight
-            else:
-                y0 = y
-            if x + sliceWidth > im_w:
-                x0 = im_w - sliceWidth
-            else:
-                x0 = x
-
+            y0 = im_h - sliceHeight if y + sliceHeight > im_h else y
+            x0 = im_w - sliceWidth if x + sliceWidth > im_w else x
             window_c = image[y0:y0 + sliceHeight, x0:x0 + sliceWidth]
             gt_c = gt_image[y0:y0 + sliceHeight, x0:x0 + sliceWidth]
             win_h, win_w = window_c.shape[:2]
@@ -330,18 +313,14 @@ def slice_im_cowc(input_im, input_mask, outname_root, outdir_im, outdir_label,
                 print("image output:", outname_im)
             cv2.imwrite(outname_im, window_c)
 
-            # save yolt labels
-            txt_outfile = open(txt_outpath, "w")
-            if verbose:
-                print("txt output:" + txt_outpath)
-            for bb in yolt_coords:
-                outstring = str(category_num) + " " + \
-                    " ".join([str(a) for a in bb]) + '\n'
+            with open(txt_outpath, "w") as txt_outfile:
                 if verbose:
-                    print("outstring:", outstring)
-                txt_outfile.write(outstring)
-            txt_outfile.close()
-
+                    print("txt output:" + txt_outpath)
+                for bb in yolt_coords:
+                    outstring = ((f"{str(category_num)} " + " ".join([str(a) for a in bb])) + '\n')
+                    if verbose:
+                        print("outstring:", outstring)
+                    txt_outfile.write(outstring)
             # if desired, save coords files
             # save box coords dictionary so that yolt_eval.py can read it
             if len(box_coords_dir) > 0:
@@ -428,7 +407,7 @@ def main():
         for item in os.listdir(args.image_dir):
             if item.endswith(im_ext):
                 outpath_tmp = os.path.join(args.image_dir, item)
-                file_handler.write("{}\n".format(outpath_tmp))
+                file_handler.write(f"{outpath_tmp}\n")
     # copy image list to simrdwn_data_dir
     shutil.copy2(yolt_im_list_loc, args.simrdwn_data_dir)
 

@@ -84,9 +84,8 @@ def load_pbtxt(pbtxt_filename, verbose=False):
     try:
         f = open(pbtxt_filename, "r")
     except:
-        raise ValueError(
-            "{} not found.".format(pbtxt_filename))
-        # return {0:0}
+        raise ValueError(f"{pbtxt_filename} not found.")
+            # return {0:0}
     label_dict = {}
     prev_line = ''
     for i, line_raw in enumerate(f.readlines()):
@@ -107,8 +106,9 @@ def load_pbtxt(pbtxt_filename, verbose=False):
 
     # check that the dict starts with 1
     if min(list(label_dict.keys())) != 1:
-        raise ValueError("Error loading {}: class ids must start "
-                         "with 1".format(pbtxt_filename))
+        raise ValueError(
+            f"Error loading {pbtxt_filename}: class ids must start with 1"
+        )
 
     return label_dict
 
@@ -253,49 +253,47 @@ def yolt_to_tf_example(image_file, label_file,
         print("  classes_text:", classes_text)
         #print("  type classes_text:", type(classes_text))
 
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'image/height': int64_feature(height),
-        'image/width': int64_feature(width),
-        'image/filename': bytes_feature(
-            image_file.encode('utf8')),
-        'image/source_id': bytes_feature(
-            image_file.encode('utf8')),
-        'image/key/sha256': bytes_feature(key.encode('utf8')),
-        'image/encoded': bytes_feature(encoded_jpg),
-        'image/format': bytes_feature('jpeg'.encode('utf8')),
-        'image/object/bbox/xmin': float_list_feature(xmin),
-        'image/object/bbox/xmax': float_list_feature(xmax),
-        'image/object/bbox/ymin': float_list_feature(ymin),
-        'image/object/bbox/ymax': float_list_feature(ymax),
-        'image/object/class/text': bytes_list_feature(classes_text),
-        'image/object/class/label': int64_list_feature(classes),
-        # 'image/object/difficult': int64_list_feature(difficult_obj),
-        # 'image/object/truncated': int64_list_feature(truncated),
-        # 'image/object/view': int64_list_feature(poses),
-
-        #  example = tf.train.Example(features=tf.train.Features(feature={
-        #      'image/height': dataset_util.int64_feature(height),
-        #      'image/width': dataset_util.int64_feature(width),
-        #      'image/filename': dataset_util.bytes_feature(
-        #          image_file.encode('utf8')),
-        #      'image/source_id': dataset_util.bytes_feature(
-        #          image_file.encode('utf8')),
-        #      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
-        #      'image/encoded': dataset_util.bytes_feature(encoded_jpg),
-        #      'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
-        #      'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
-        #      'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
-        #      'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
-        #      'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
-        #      'image/object/class/text': dataset_util.bytes_list_feature(classes_text),
-        #      'image/object/class/label': dataset_util.int64_list_feature(classes),
-        #      'image/object/difficult': dataset_util.int64_list_feature(difficult_obj),
-        #      'image/object/truncated': dataset_util.int64_list_feature(truncated),
-        #      'image/object/view': dataset_util.int64_list_feature(poses),
-
-    }))
-
-    return example
+    return tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/height': int64_feature(height),
+                'image/width': int64_feature(width),
+                'image/filename': bytes_feature(image_file.encode('utf8')),
+                'image/source_id': bytes_feature(image_file.encode('utf8')),
+                'image/key/sha256': bytes_feature(key.encode('utf8')),
+                'image/encoded': bytes_feature(encoded_jpg),
+                'image/format': bytes_feature('jpeg'.encode('utf8')),
+                'image/object/bbox/xmin': float_list_feature(xmin),
+                'image/object/bbox/xmax': float_list_feature(xmax),
+                'image/object/bbox/ymin': float_list_feature(ymin),
+                'image/object/bbox/ymax': float_list_feature(ymax),
+                'image/object/class/text': bytes_list_feature(classes_text),
+                'image/object/class/label': int64_list_feature(classes),
+                # 'image/object/difficult': int64_list_feature(difficult_obj),
+                # 'image/object/truncated': int64_list_feature(truncated),
+                # 'image/object/view': int64_list_feature(poses),
+                #  example = tf.train.Example(features=tf.train.Features(feature={
+                #      'image/height': dataset_util.int64_feature(height),
+                #      'image/width': dataset_util.int64_feature(width),
+                #      'image/filename': dataset_util.bytes_feature(
+                #          image_file.encode('utf8')),
+                #      'image/source_id': dataset_util.bytes_feature(
+                #          image_file.encode('utf8')),
+                #      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
+                #      'image/encoded': dataset_util.bytes_feature(encoded_jpg),
+                #      'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
+                #      'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
+                #      'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
+                #      'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
+                #      'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
+                #      'image/object/class/text': dataset_util.bytes_list_feature(classes_text),
+                #      'image/object/class/label': dataset_util.int64_list_feature(classes),
+                #      'image/object/difficult': dataset_util.int64_list_feature(difficult_obj),
+                #      'image/object/truncated': dataset_util.int64_list_feature(truncated),
+                #      'image/object/view': dataset_util.int64_list_feature(poses),
+            }
+        )
+    )
 
 
 ###############################################################################
@@ -319,19 +317,19 @@ def test_image_tf_example(image_file, verbose=False):
         encoded_jpg = fid.read()
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'image/height': int64_feature(height),
-        'image/width': int64_feature(width),
-        'image/filename': bytes_feature(
-            image_file.encode('utf8')),
-        'image/source_id': bytes_feature(
-            image_file.encode('utf8')),
-        'image/key/sha256': bytes_feature(key.encode('utf8')),
-        'image/encoded': bytes_feature(encoded_jpg),
-        'image/format': bytes_feature('jpeg'.encode('utf8')),
-    }))
-
-    return example
+    return tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/height': int64_feature(height),
+                'image/width': int64_feature(width),
+                'image/filename': bytes_feature(image_file.encode('utf8')),
+                'image/source_id': bytes_feature(image_file.encode('utf8')),
+                'image/key/sha256': bytes_feature(key.encode('utf8')),
+                'image/encoded': bytes_feature(encoded_jpg),
+                'image/format': bytes_feature('jpeg'.encode('utf8')),
+            }
+        )
+    )
 
 
 ###############################################################################
@@ -347,13 +345,15 @@ def yolt_dir_to_tf(image_dir, label_map_dict, TF_RecordPath,  # cat_int_plus=1,
         image_file_full = os.path.join(image_dir, image_file)
         label_file_full = image_file_full.split(
             '.')[0].replace('images', 'labels') + '.txt'
-        tf_example = yolt_to_tf_example(image_file_full, label_file_full,
-                                        label_map_dict,
-                                        # cat_int_plus=cat_int_plus,
-                                        convert_dict=convert_dict,
-                                        ignore_difficult_instances=False,
-                                        verbose=verbose)
-        if tf_example:
+        if tf_example := yolt_to_tf_example(
+            image_file_full,
+            label_file_full,
+            label_map_dict,
+            # cat_int_plus=cat_int_plus,
+            convert_dict=convert_dict,
+            ignore_difficult_instances=False,
+            verbose=verbose,
+        ):
             writer.write(tf_example.SerializeToString())
 
     writer.close()
@@ -368,40 +368,40 @@ def yolt_imlist_to_tf(image_list_file, label_map_dict, TF_RecordPath,
     if verbose:
         print("\nIngesting", image_list_file, "...\n")
 
-    # shuffle
-    floc = open(image_list_file, 'r')
-    # floc = open(image_list_file, 'rb')
-    lines = floc.readlines()
-    random.shuffle(lines)
-    # take first few records as validation files
-    n_val = int(val_frac * len(lines))
+    with open(image_list_file, 'r') as floc:
+        # floc = open(image_list_file, 'rb')
+        lines = floc.readlines()
+        random.shuffle(lines)
+        # take first few records as validation files
+        n_val = int(val_frac * len(lines))
 
-    writer = tf.python_io.TFRecordWriter(TF_RecordPath)
-    if (val_frac > 0) and len(TF_PathVal) > 0:
-        writer_val = tf.python_io.TFRecordWriter(TF_PathVal)
-    for i, image_file in enumerate(lines):  # floc.readlines():
-        image_file_full = image_file.strip()
-        if verbose:
-            print("image_file:", image_file_full)
-            print("  os.path.exists(image_file?",
-                  os.path.exists(image_file_full))
-        label_file_full = image_file_full.split(
-            '.')[0].replace('images', 'labels') + '.txt'
-        if not os.path.exists(label_file_full):
-            label_file_full = ''
-        tf_example = yolt_to_tf_example(image_file_full, label_file_full,
-                                        label_map_dict,
-                                        # cat_int_plus=cat_int_plus,
-                                        convert_dict=convert_dict,
-                                        ignore_difficult_instances=False,
-                                        verbose=verbose)
-        if tf_example:
-            if (len(TF_PathVal) > 0) and i < n_val:
-                writer_val.write(tf_example.SerializeToString())
-            else:
-                writer.write(tf_example.SerializeToString())
+        writer = tf.python_io.TFRecordWriter(TF_RecordPath)
+        if (val_frac > 0) and len(TF_PathVal) > 0:
+            writer_val = tf.python_io.TFRecordWriter(TF_PathVal)
+        for i, image_file in enumerate(lines):  # floc.readlines():
+            image_file_full = image_file.strip()
+            if verbose:
+                print("image_file:", image_file_full)
+                print("  os.path.exists(image_file?",
+                      os.path.exists(image_file_full))
+            label_file_full = image_file_full.split(
+                '.')[0].replace('images', 'labels') + '.txt'
+            if not os.path.exists(label_file_full):
+                label_file_full = ''
+            if tf_example := yolt_to_tf_example(
+                image_file_full,
+                label_file_full,
+                label_map_dict,
+                # cat_int_plus=cat_int_plus,
+                convert_dict=convert_dict,
+                ignore_difficult_instances=False,
+                verbose=verbose,
+            ):
+                if (len(TF_PathVal) > 0) and i < n_val:
+                    writer_val.write(tf_example.SerializeToString())
+                else:
+                    writer.write(tf_example.SerializeToString())
 
-    floc.close()
     writer.close()
     if (val_frac > 0) and len(TF_PathVal) > 0:
         writer_val.close()
@@ -419,23 +419,23 @@ def testlist_to_tf(image_list_file,  TF_RecordPath, verbose=False):
 
     # shuffle
     t0 = time.time()
-    floc = open(image_list_file, 'r')
-    #floc = open(image_list_file, 'rb')
-    lines = floc.readlines()
-    # random.shuffle(lines)
+    with open(image_list_file, 'r') as floc:
+        #floc = open(image_list_file, 'rb')
+        lines = floc.readlines()
+        # random.shuffle(lines)
 
-    writer = tf.python_io.TFRecordWriter(TF_RecordPath)
-    for i, image_file in enumerate(lines):  # floc.readlines():
-        image_file_full = image_file.strip()
-        if verbose:
-            print("image_file_full:", image_file_full)
-            print("  os.path.exists(image_file_full?",
-                  os.path.exists(image_file_full))
-        tf_example = test_image_tf_example(image_file_full, verbose=verbose)
-        if (tf_example):
-            writer.write(tf_example.SerializeToString())
+        writer = tf.python_io.TFRecordWriter(TF_RecordPath)
+        for i, image_file in enumerate(lines):  # floc.readlines():
+            image_file_full = image_file.strip()
+            if verbose:
+                print("image_file_full:", image_file_full)
+                print("  os.path.exists(image_file_full?",
+                      os.path.exists(image_file_full))
+            if tf_example := test_image_tf_example(
+                image_file_full, verbose=verbose
+            ):
+                writer.write(tf_example.SerializeToString())
 
-    floc.close()
     writer.close()
 
     print("Time to run testlist_to_tf():", time.time() - t0, "seconds")

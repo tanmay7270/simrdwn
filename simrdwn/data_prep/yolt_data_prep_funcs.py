@@ -117,10 +117,10 @@ def latlon2pixel(lat, lon, input_raster='', targetsr='', geom_transform=''):
 def run_cmd(cmd):
     p = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
     while True:
-        line = p.stdout.readline()
-        if not line:
+        if line := p.stdout.readline():
+            print(line.replace('\n', ''))
+        else:
             break
-        print(line.replace('\n', ''))
     return
 
 
@@ -173,15 +173,11 @@ def pair_im_vec_spacenet(rasterSrc, vecDir, new_schema=False):
     # remove 3band or 8band prefix
     name_root = name_root0[6:]
 
-    if not new_schema:
-        vectorSrc = vecDir + name_root + '_Geo.geojson'
-    else:
-        # new naming schema:
-        # 3band_AOI_1_RIO_img9.tif
-        # Geo_AOI_1_RIO_img9.geojson
-        vectorSrc = vecDir + 'Geo_' + name_root + '.geojson'
-
-    return vectorSrc
+    return (
+        vecDir + name_root + '_Geo.geojson'
+        if not new_schema
+        else vecDir + 'Geo_' + name_root + '.geojson'
+    )
 
 
 ###############################################################################
@@ -199,9 +195,7 @@ def pair_im_vec_spacenet_v2(rasterSrc, vecDir, new_schema=False):
     name_root = '_'.join([name_root_l[1], name_root_l[2],
                           name_root_l[3], name_root_l[-1]])
 
-    vectorSrc = vecDir + 'buildings_' + name_root + '.geojson'
-
-    return vectorSrc
+    return vecDir + 'buildings_' + name_root + '.geojson'
 
 
 ###############################################################################
@@ -246,22 +240,14 @@ def geojson_to_pixel_arr(raster_file, geojson_file, acceptable_categories=[],
             print("geometry:features:", feature['geometry'].keys())
             # print "feature['geometry']['coordinates'][0]", z
         # save only desired categories
-        if acc_cat_set:
-            if cat_tmp in acc_cat_set:
-                latlons.append(coords_tmp)
-                poly_types.append(poly_type_tmp)
-                categories.append(cat_tmp)
-        # else save all categories
-        else:
+        if acc_cat_set and cat_tmp in acc_cat_set or not acc_cat_set:
             latlons.append(coords_tmp)
             poly_types.append(poly_type_tmp)
             categories.append(cat_tmp)
-
     # convert latlons to pixel coords
     pixel_coords = []
     latlon_coords = []
-    for i, (cat, poly_type, poly0) in enumerate(zip(categories, poly_types, latlons)):
-
+    for cat, poly_type, poly0 in zip(categories, poly_types, latlons):
         if poly_type.upper() == 'POLYGON':
             poly = np.array(poly0)
             if verbose:
@@ -288,17 +274,12 @@ def geojson_to_pixel_arr(raster_file, geojson_file, acceptable_categories=[],
                     print("px, py", px, py)
                 poly_list_latlon.append([lat, lon])
 
-            if pixel_ints:
-                ptmp = np.rint(poly_list_pix).astype(int)
-            else:
-                ptmp = poly_list_pix
+            ptmp = np.rint(poly_list_pix).astype(int) if pixel_ints else poly_list_pix
             pixel_coords.append(ptmp)
             latlon_coords.append(poly_list_latlon)
 
         elif poly_type.upper() == 'POINT':
             print("Skipping shape type: POINT in geojson_to_pixel_arr()")
-            continue
-
         else:
             print("Unknown shape type:", poly_type,
                   " in geojson_to_pixel_arr()")
@@ -369,86 +350,79 @@ def spacenet_yolt_setup(building_list, classes_dic, im_input_dir,
     '''
 
     category = 'building'
-    if imtype in ['iband', 'iband3']:
-        out_ext = '.png'
-    else:
-        out_ext = '.tif'
-    list_file = open(train_images_list_file, 'wb')
-    nplots = 50
+    out_ext = '.png' if imtype in ['iband', 'iband3'] else '.tif'
+    with open(train_images_list_file, 'wb') as list_file:
+        nplots = 50
 
-    for p in [labels_outdir, images_outdir]:
-        if not os.path.exists(p):
-            os.mkdir(p)
+        for p in [labels_outdir, images_outdir]:
+            if not os.path.exists(p):
+                os.mkdir(p)
 
-    t0 = time.time()
-    yolt_list = []
-    count = 0
-    for i, row in enumerate(building_list):
+        t0 = time.time()
+        yolt_list = []
+        count = 0
+        for i, row in enumerate(building_list):
 
-        [rasterSrc, vectorSrc, pixel_coords, latlon_coords, yolt_coords,
-         cont_plot_box] = row
+            [rasterSrc, vectorSrc, pixel_coords, latlon_coords, yolt_coords,
+             cont_plot_box] = row
 
-        if (i % 50) == 0:
-            print(i, "/", len(building_list), rasterSrc)
+            if (i % 50) == 0:
+                print(i, "/", len(building_list), rasterSrc)
 
-        # skip empty scenes
-        if len(pixel_coords) == 0:
-            continue
+            # skip empty scenes
+            if len(pixel_coords) == 0:
+                continue
 
-        count += 1
-        ext = rasterSrc.split('.')[1]
-        # e.g. '3band_013022223131_Public_img1014'
-        name_root_tmp3 = rasterSrc.split('/')[-1].split('.')[0]
-        # e.g. 'band_013022223131_Public_img1014'
-        name_root = name_root_tmp3[1:]
+            count += 1
+            ext = rasterSrc.split('.')[1]
+            # e.g. '3band_013022223131_Public_img1014'
+            name_root_tmp3 = rasterSrc.split('/')[-1].split('.')[0]
+            # e.g. 'band_013022223131_Public_img1014'
+            name_root = name_root_tmp3[1:]
 
-        # copy file(s) of name_root from im_input_dir to images_outdir
-        # if not using iband, copy file
-        if imtype == '3band':
-            imloc = im_input_dir + name_root_tmp3 + '.' + out_ext
-            if images_outdir != im_input_dir:
-                shutil.copy(imloc, images_outdir)
-            name_rootf = name_root_tmp3
-        # else, copy all files in 'iband' directory with appropriate root
-        elif imtype in ['iband', 'iband3']:
-            im_list = glob.glob(os.path.join(
-                im_input_dir, '*' + name_root + band_delim + '*'))
-            for imloctmp in im_list:
-                shutil.copy(imloctmp, images_outdir)
-            # set name_rootf as file ending in '#1' + ext
-            name_rootf = 'i' + name_root + band_delim + '1'
-        else:
-            print("Unsupported image type (imtype) in spacenet_yolt_setup()")
-            return
+            # copy file(s) of name_root from im_input_dir to images_outdir
+            # if not using iband, copy file
+            if imtype == '3band':
+                imloc = im_input_dir + name_root_tmp3 + '.' + out_ext
+                if images_outdir != im_input_dir:
+                    shutil.copy(imloc, images_outdir)
+                name_rootf = name_root_tmp3
+            # else, copy all files in 'iband' directory with appropriate root
+            elif imtype in ['iband', 'iband3']:
+                im_list = glob.glob(os.path.join(
+                    im_input_dir, '*' + name_root + band_delim + '*'))
+                for imloctmp in im_list:
+                    shutil.copy(imloctmp, images_outdir)
+                # set name_rootf as file ending in '#1' + ext
+                name_rootf = 'i' + name_root + band_delim + '1'
+            else:
+                print("Unsupported image type (imtype) in spacenet_yolt_setup()")
+                return
 
-        # make plots
-        if count < nplots and len(sample_mask_vis_dir) > 0:
-            name_root = rasterSrc.split('/')[-1]
-            plot_name = sample_mask_vis_dir + name_root + '_mask.png'
-            maskSrc = maskDir + name_root
-            mask_tmp = cv2.imread(maskSrc, 0)
-            im_tmp = cv2.imread(rasterSrc, 1)
-            print("rasterSrc:", rasterSrc)
-            print("maksSrc:", maskSrc)
-            plot_contours_yolt(im_tmp, mask_tmp,
-                               cont_plot=cont_plot_box, figsize=(8, 8),
-                               plot_name=plot_name,
-                               add_title=False)
+            # make plots
+            if count < nplots and len(sample_mask_vis_dir) > 0:
+                name_root = rasterSrc.split('/')[-1]
+                plot_name = sample_mask_vis_dir + name_root + '_mask.png'
+                maskSrc = maskDir + name_root
+                mask_tmp = cv2.imread(maskSrc, 0)
+                im_tmp = cv2.imread(rasterSrc, 1)
+                print("rasterSrc:", rasterSrc)
+                print("maksSrc:", maskSrc)
+                plot_contours_yolt(im_tmp, mask_tmp,
+                                   cont_plot=cont_plot_box, figsize=(8, 8),
+                                   plot_name=plot_name,
+                                   add_title=False)
 
-        txt_outpath = labels_outdir + name_rootf + '.txt'
-        txt_outfile = open(txt_outpath, "w")
-        for bb in yolt_coords:
-            cls_id = classes_dic[category]
-            outstring = str(cls_id) + " " + \
-                " ".join([str(a) for a in bb]) + '\n'
-            # print "outstring:", outstring
-            txt_outfile.write(outstring)
-        txt_outfile.close()
+            txt_outpath = labels_outdir + name_rootf + '.txt'
+            with open(txt_outpath, "w") as txt_outfile:
+                for bb in yolt_coords:
+                    cls_id = classes_dic[category]
+                    outstring = ((f"{str(cls_id)} " + " ".join([str(a) for a in bb])) + '\n')
+                    # print "outstring:", outstring
+                    txt_outfile.write(outstring)
+            # create list of training image locations
+            list_file.write('%s/%s%s\n' % (deploy_dir, name_rootf, out_ext))
 
-        # create list of training image locations
-        list_file.write('%s/%s%s\n' % (deploy_dir, name_rootf, out_ext))
-
-    list_file.close()
     print("building list has length:", len(building_list), "though only",
           count, "images were processed, the remainder are empty")
     print("Time to setup training data for:", images_outdir, "of length:",
@@ -758,14 +732,12 @@ def comb_3band_8band(band3_file, band8_file, w0, h0,
     for band in range(1, im8_raw.RasterCount+1):
         if verbose:
             print("[ GETTING BAND ]: ", band)
-        if band in band_dic_8to3.keys():
-            # skip if we put rgb first in the array
+        if band in band_dic_8to3:
             if rgb_first:
                 continue
-            else:
-                srcband = im3_raw.GetRasterBand(band_dic_8to3[band])
-                if verbose:
-                    print("band_dic_8to3[band]:",  band_dic_8to3[band])
+            srcband = im3_raw.GetRasterBand(band_dic_8to3[band])
+            if verbose:
+                print("band_dic_8to3[band]:",  band_dic_8to3[band])
         else:
             srcband = im8_raw.GetRasterBand(band)
         band_arr = srcband.ReadAsArray()
@@ -776,7 +748,7 @@ def comb_3band_8band(band3_file, band8_file, w0, h0,
             print("image_rs.shape", image_rs.shape)
             print("image min, max", np.min(image_rs), np.max(image_rs))
         if show_cv2:
-            cv2.imshow('band' + str(band), image_rs.astype('uint8'))
+            cv2.imshow(f'band{str(band)}', image_rs.astype('uint8'))
             cv2.waitKey(0)
         bandlist.append(image_rs)
 
@@ -807,14 +779,11 @@ def split_8band(band8_file, outdir, band_delim='#', out_ext='.png'):
     arr_rescale = np.stack(bandlist, axis=2)
 
     nbandtmp = arr_rescale.shape[-1]
-    #outfile = outdir + 'i' + mroot.split('.')[0][1:] + out_ext
-    nout = 1
-    for k in range(0, nbandtmp, 3):
+    for nout, k in enumerate(range(0, nbandtmp, 3), start=1):
         # print "k", k
         #outfile_tmp = outfile.split('.')[0] + band_delim + str(nout) + out_ext
         outfile_tmp = outdir + mroot + band_delim + str(nout) + out_ext
 
-        nout += 1
         # get 1st band
         banda = arr_rescale[:, :, k]
         # get 2nd band
@@ -854,11 +823,11 @@ def rescale_intensity(band, nstd=3, method='std', out_range='uint8',
     minv, maxv = mean - nstd*std, mean + nstd*std
 
     if method == 'uint16':
-        band_rescale = exposure.rescale_intensity(band,
-                                                  in_range=('uint16'),
-                                                  out_range=('uint8'))
+        return exposure.rescale_intensity(
+            band, in_range=('uint16'), out_range=('uint8')
+        )
     elif method == 'hist':
-        band_rescale = 255 * exposure.equalize_hist(band)
+        return 255 * exposure.equalize_hist(band)
 
     elif method == 'std':
         mean = np.mean(band)
@@ -866,15 +835,13 @@ def rescale_intensity(band, nstd=3, method='std', out_range='uint8',
         minv, maxv = max(0, mean - nstd*std), mean + nstd*std
         if verbose:
             print("mean, std, minv, maxv:", mean, std, minv, maxv)
-        band_rescale = exposure.rescale_intensity(band,
-                                                  in_range=(minv, maxv),
-                                                  out_range=('uint8'))
+        return exposure.rescale_intensity(
+            band, in_range=(minv, maxv), out_range=('uint8')
+        )
     else:
         if verbose:
             print("Unknown method for rescale_intensity")
-        band_rescale = band
-
-    return band_rescale
+        return band
 
 
 ###############################################################################
@@ -942,7 +909,7 @@ def augment_training_data(label_folder, image_folder,
             img_out_l = 6*[image]
 
         else:
-            for i in range(6):
+            for _ in range(6):
                 im_tmp = img_hsv.copy()
                 # alter values for each of 2 bands (hue and saturation)
                 # for j in range(2):
@@ -952,11 +919,11 @@ def augment_training_data(label_folder, image_folder,
                # alter values for each of 3 bands (hue and saturation, value
                 for j in range(3):
                     # set 'value' range somewhat smaller
-                    if j == 2:
-                        rand = 0.7 + 0.6*np.random.random()
-                    else:
-                        rand = hsv_range[0] + hsv_diff * \
-                            np.random.random()  # between 0,5 and 1.5
+                    rand = (
+                        0.7 + 0.6 * np.random.random()
+                        if j == 2
+                        else hsv_range[0] + hsv_diff * np.random.random()
+                    )
                     z0 = (im_tmp[:, :, j]*rand).astype(int)
                     z0[z0 > 255] = 255
                     im_tmp[:, :, j] = z0
@@ -1135,12 +1102,8 @@ def convertTo8Bit(rasterImageName, outputRaster,
         # if not exist minimum and maximum values
         if min is None or max is None:
             (min, max) = band.ComputeRasterMinMax(1)
-        cmd.append('-scale_{}'.format(bandId))
-        cmd.append('{}'.format(0))
-        cmd.append('{}'.format(max))
-        cmd.append('{}'.format(0))
-        cmd.append('{}'.format(255))
-
+        cmd.extend((f'-scale_{bandId}', '0'))
+        cmd.extend((f'{max}', '0', '255'))
     cmd.append(rasterImageName)
 
     # if outputFormat == 'JPEG':

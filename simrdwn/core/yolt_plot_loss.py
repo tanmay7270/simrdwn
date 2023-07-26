@@ -251,7 +251,7 @@ def main():
     #log_dir = os.path.join(res_dir, 'logs')
     log_dir = res_dir  # os.path.join(res_dir, 'logs')
 
-    print("res_dir:", res_dir)
+    print("res_dir:", log_dir)
     print("log_dir:", log_dir)
 
     # set plot name

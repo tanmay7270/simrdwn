@@ -59,16 +59,17 @@ def geomPixel2geomGeo(shapely_geom, affineObject=[],
     if not gdal_geomTransform:
         gdal_geomTransform = gdal.Open(input_raster).GetGeoTransform()
 
-    geomTransform = shapely.affinity.affine_transform(shapely_geom,
-                                                      [affineObject.a,
-                                                       affineObject.b,
-                                                       affineObject.d,
-                                                       affineObject.e,
-                                                       affineObject.xoff,
-                                                       affineObject.yoff]
-                                                      )
-
-    return geomTransform
+    return shapely.affinity.affine_transform(
+        shapely_geom,
+        [
+            affineObject.a,
+            affineObject.b,
+            affineObject.d,
+            affineObject.e,
+            affineObject.xoff,
+            affineObject.yoff,
+        ],
+    )
 
 
 ###############################################################################
@@ -210,18 +211,16 @@ def add_geo_coords_to_df(df_, inProj_str='epsg:4326', outProj_str='epsg:3857',
         # check if the the image as geographic metadata
         if gdal_geomTransform == (0.0, 1.0, 0.0, 0.0, 0.0, 1.0):
             out_arr_row = 8 * [0]
-            out_arr.append(out_arr_row)
-
-        # else, get geo locations
         else:
             out_arr_row, poly_geo = get_row_geo_coords(
                 row, affineObject=affineObject,
                 gdal_geomTransform=gdal_geomTransform,
                 inProj_str=inProj_str, outProj_str=outProj_str,
                 verbose=verbose)
-            out_arr.append(out_arr_row)
             if create_geojson:
                 out_arr_json.append(poly_geo)
+
+        out_arr.append(out_arr_row)
 
     # update dataframe
     # [lon0, lat0, lon1, lat1, x0_wmp, y0_wmp, x1_wmp, y1_wmp]
@@ -237,7 +236,7 @@ def add_geo_coords_to_df(df_, inProj_str='epsg:4326', outProj_str='epsg:3857',
 
     # geodataframe if desired
     #   https://gis.stackexchange.com/questions/174159/convert-a-pandas-dataframe-to-a-geodataframe
-    if create_geojson and (len(out_arr_json) > 0):
+    if create_geojson and out_arr_json:
         crs_init = {'init': inProj_str}
         df_json = pd.DataFrame(out_arr_json, columns=['geometry'])
         # add important columns to df_json

@@ -33,10 +33,7 @@ def weighted_avg_and_std(values, weights):
 ###############################################################################
 def twinx_function(x, raw=False):
     V = 3./x
-    if raw:
-        return V
-    else:
-        return ["%.1f" % z for z in V]
+    return V if raw else ["%.1f" % z for z in V]
     # return [z for z in V]
 
 
@@ -64,8 +61,8 @@ def _run_cmd(cmd):
     '''Write to stdout, etc,(incompatible with nohup)'''
     p = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
     while True:
-        line = p.stdout.readline()
-        if not line:
+        if line := p.stdout.readline():
+            print(line.replace('\n', ''))
+        else:
             break
-        print(line.replace('\n', ''))
     return

@@ -15,6 +15,7 @@ Data located at:
 """
 
 
+
 import os
 import sys
 import shutil
@@ -117,12 +118,8 @@ print("convert_dict:", convert_dict)
 # Slice large images into smaller chunks
 ##############################
 print("im_list_name:", im_list_name)
-if os.path.exists(im_list_name):
-    run_slice = False
-else:
-    run_slice = True
-
-for i, d in enumerate(train_dirs):
+run_slice = not os.path.exists(im_list_name)
+for d in train_dirs:
     dtot = os.path.join(ground_truth_dir, d)
     print("dtot:", dtot)
 
@@ -134,9 +131,9 @@ for i, d in enumerate(train_dirs):
     for annotate_file in annotate_files:
         annotate_file_tot = os.path.join(dtot, annotate_file)
         name_root = annotate_file.split(annotation_suffix)[0]
-        imfile = name_root + '.png'
+        imfile = f'{name_root}.png'
         imfile_tot = os.path.join(dtot, imfile)
-        outroot = d + '_' + imfile.split('.')[0]
+        outroot = f'{d}_' + imfile.split('.')[0]
         print("\nName_root", name_root)
         print("   annotate_file:", annotate_file)
         print("  imfile:", imfile)
@@ -156,10 +153,9 @@ for i, d in enumerate(train_dirs):
 # Get list for simrdwn/data/, copy to data dir
 ##############################
 train_ims = [os.path.join(images_dir, f) for f in os.listdir(images_dir)]
-f = open(im_list_name, 'w')
-for item in train_ims:
-    f.write("%s\n" % item)
-f.close()
+with open(im_list_name, 'w') as f:
+    for item in train_ims:
+        f.write("%s\n" % item)
 # copy to data dir
 print("Copying", im_list_name, "to:", simrdwn_data_dir)
 shutil.copy(im_list_name, simrdwn_data_dir)

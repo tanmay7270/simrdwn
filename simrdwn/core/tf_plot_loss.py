@@ -180,22 +180,20 @@ def main():
     # read in lines
     # e.g. (INFO:tensorflow:global step 39997: loss = 2.4568 (0.747 sec/step))
     out_list = []
-    ftmp = open(log_path, "r")
-    for line in ftmp:
-        if line.startswith(prefix):
-            spl0 = line.split(prefix)[-1]
-            loss = spl0.split(",")[0]
-            spl1 = spl0.split("step = ")
-            step = spl1[-1].split(" ")[0]
-            if verbose:
-                print("line:", line)
-                print("  spl0:", spl0)
-                print("  spl1:", spl1)
-                print("  step:", step)
-                print("  loss:", loss)
-            out_list.append([int(step), float(loss)])
-    ftmp.close()
-
+    with open(log_path, "r") as ftmp:
+        for line in ftmp:
+            if line.startswith(prefix):
+                spl0 = line.split(prefix)[-1]
+                loss = spl0.split(",")[0]
+                spl1 = spl0.split("step = ")
+                step = spl1[-1].split(" ")[0]
+                if verbose:
+                    print("line:", line)
+                    print("  spl0:", spl0)
+                    print("  spl1:", spl1)
+                    print("  step:", step)
+                    print("  loss:", loss)
+                out_list.append([int(step), float(loss)])
     # create dataframe
     df = pd.DataFrame(out_list, columns=['Batch_Num', 'Loss'])
 
